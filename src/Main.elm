@@ -10,6 +10,7 @@ import Element.Input as EI
 import Url exposing (Url)
 
 
+
 -- TODO
 -- 1. I need to rethink how I am loading Fonts
 -- 2. How to manage state in the application in a way the user can reload
@@ -35,6 +36,7 @@ edges =
     }
 
 
+
 -- MAIN
 
 
@@ -48,6 +50,7 @@ main =
         , onUrlChange = ChangedUrl
         , onUrlRequest = ClickedLink
         }
+
 
 
 -- MODEL
@@ -74,7 +77,8 @@ type alias Model =
 
 init : () -> Url.Url -> Nav.Key -> ( Model, Cmd Msg )
 init flags url key =
-    ( { stage = TitleStage, userToken = Nothing }, Cmd.none )
+    ( { stage = CreditsStage, userToken = Nothing }, Cmd.none )
+
 
 
 -- UPDATE
@@ -86,6 +90,7 @@ type Msg
     | GoToGame UserToken
     | GoToTitle
     | GoToCredits
+
 
 
 -- SUBSCRIPTIONS
@@ -113,6 +118,7 @@ update msg model =
 
         ChangedUrl _ ->
             ( model, Cmd.none )
+
 
 
 -- VIEW
@@ -167,14 +173,27 @@ titleStageView =
         , E.image [ E.centerX ] { src = "../assets/title.svg", description = "" }
         , E.row
             [ E.centerX
+
+            -- , E.spacingXY 15 0
             ]
-            [ E.image [ E.mouseOver [ E.alpha 0.5 ], EE.onClick <| GoToGame Heart ] { src = "../assets/heart.png", description = "" }
-            , E.image [ E.mouseOver [ E.alpha 0.5 ], EE.onClick <| GoToGame Clip ] { src = "../assets/clip.png", description = "" }
+            [ E.image
+                [ E.pointer
+                , E.mouseOver [ E.alpha 0.5 ]
+                , EE.onClick <| GoToGame Heart
+                ]
+                { src = "../assets/heart.png", description = "" }
+            , E.image
+                [ E.pointer
+                , E.mouseOver [ E.alpha 0.5 ]
+                , EE.onClick <| GoToGame Clip
+                ]
+                { src = "../assets/clip.png", description = "" }
             ]
         , E.el [ E.paddingEach { edges | bottom = 70 } ] E.none
         , E.el
             [ E.centerX
             , EE.onClick GoToCredits
+            , E.pointer
             , EF.color fontColor
             , E.mouseOver [ E.alpha 0.5 ]
             , EF.family [ EF.external { url = "https://fonts.googleapis.com/css?family=Gaegu", name = "gaegu" } ]
@@ -197,14 +216,41 @@ gamePageView userToken =
 
 creditPageView : E.Element Msg
 creditPageView =
-    E.column [ E.centerX ]
+    E.column [ E.centerX, E.centerY, E.height E.fill ]
         [ addContributor "Developer" "Luis Papiernik" "luispapiernik.dev"
-        , addContributor "Designer" "inJoy Design" "http://designinjoy.com"
-        , E.el [ EE.onClick GoToTitle ] <| E.text "X"
+        , addContributor "Designer" "inJoy Design" "designinjoy.com"
+        , E.el [ E.paddingEach { edges | bottom = 0 } ] E.none
+        , E.el [ E.centerX, EE.onClick GoToTitle ] <| E.image [] { src = "../assets/icon_close.svg", description = "" }
         ]
 
 
 addContributor : String -> String -> String -> E.Element Msg
 addContributor title name url =
-    E.column []
-        [ E.text title, E.text name, E.text url ]
+    E.column [ E.centerX ]
+        [ E.el
+            [ E.centerX
+            , EF.size 70
+            , EF.family [ EF.external { url = "https://fonts.googleapis.com/css?family=Gaegu", name = "gaegu" } ]
+            ]
+          <|
+            E.text title
+        , E.el [ E.paddingEach { edges | top = 10 } ] E.none
+        , E.el
+            [ E.centerX
+            , EF.size 35
+            , EF.family [ EF.external { url = "https://fonts.googleapis.com/css?family=Gaegu", name = "gaegu" } ]
+            , E.pointer
+            ]
+          <|
+            E.text name
+        , E.el [ E.paddingEach { edges | top = 5 } ] E.none
+        , E.newTabLink
+            [ E.centerX
+            , EF.color fontColor
+            , EF.size 20
+            , EF.family [ EF.external { url = "https://fonts.googleapis.com/css?family=Gaegu", name = "gaegu" } ]
+            , E.pointer
+            , E.mouseOver [ E.alpha 0.5 ]
+            ]
+            { url = "https://" ++ url, label = E.text url }
+        ]

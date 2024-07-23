@@ -2,3 +2,9 @@
 elm-stuff
 # elm-repl generated files
 repl-temp-*
+
+# This does not need to be tracked since it is a soft link
+# to the public/assets directory
+assets
+
+!public/assets/
