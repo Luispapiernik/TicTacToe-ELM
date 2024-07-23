@@ -1,0 +1,8 @@
+{
+    "buildCommand": "npx elm make src/Main.elm --output=public/index.html --optimize",
+    "outputDirectory": "public",
+    "rewrites": [
+      { "source": "/(.*)", "destination": "/index.html" }
+    ],
+    "cleanUrls": true
+}
