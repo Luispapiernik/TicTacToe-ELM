@@ -1,12 +1,12 @@
 module Main exposing (main)
 
+import Array as A
 import Browser
 import Browser.Navigation as Nav
 import Element as E
 import Element.Background as EB
 import Element.Events as EE
 import Element.Font as EF
-import Element.Input as EI
 import Url exposing (Url)
 
 
@@ -36,6 +36,13 @@ edges =
     }
 
 
+initialGameState =
+    { userToken = Heart
+    , currentTurn = User
+    , tableState = A.repeat 9 Nothing
+    }
+
+
 
 -- MAIN
 
@@ -56,9 +63,14 @@ main =
 -- MODEL
 
 
-type UserToken
+type GameTokens
     = Heart
     | Clip
+
+
+type Players
+    = User
+    | Computer
 
 
 type Stage
@@ -67,9 +79,16 @@ type Stage
     | CreditsStage
 
 
+type alias GameState =
+    { userToken : GameTokens
+    , currentTurn : Players
+    , tableState : A.Array (Maybe Players)
+    }
+
+
 type alias Model =
     { stage : Stage
-    , userToken : Maybe UserToken
+    , gameState : GameState
 
     -- , key : Nav.Key
     }
@@ -77,7 +96,11 @@ type alias Model =
 
 init : () -> Url.Url -> Nav.Key -> ( Model, Cmd Msg )
 init flags url key =
-    ( { stage = CreditsStage, userToken = Nothing }, Cmd.none )
+    ( { stage = TitleStage
+      , gameState = initialGameState
+      }
+    , Cmd.none
+    )
 
 
 
@@ -87,9 +110,11 @@ init flags url key =
 type Msg
     = ChangedUrl Url
     | ClickedLink Browser.UrlRequest
-    | GoToGame UserToken
+    | GoToGame GameTokens
     | GoToTitle
     | GoToCredits
+    | LocateToken Int Players
+    | ResetGame
 
 
 
@@ -105,19 +130,40 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         GoToGame token ->
-            ( { stage = GameStage, userToken = Just token }, Cmd.none )
+            ( { stage = GameStage, gameState = { initialGameState | userToken = token } }
+            , Cmd.none
+            )
 
         GoToCredits ->
             ( { model | stage = CreditsStage }, Cmd.none )
 
         GoToTitle ->
-            ( { stage = TitleStage, userToken = Nothing }, Cmd.none )
+            ( { model | stage = TitleStage }
+            , Cmd.none
+            )
 
         ClickedLink _ ->
             ( model, Cmd.none )
 
         ChangedUrl _ ->
             ( model, Cmd.none )
+
+        LocateToken index player ->
+            let
+                gameState =
+                    model.gameState
+
+                updatedTableState =
+                    A.set index (Just player) gameState.tableState
+            in
+            ( { model | gameState = { gameState | tableState = updatedTableState } }, Cmd.none )
+
+        ResetGame ->
+            let
+                gameState =
+                    model.gameState
+            in
+            ( { model | gameState = { gameState | tableState = A.repeat 9 Nothing } }, Cmd.none )
 
 
 
@@ -130,7 +176,11 @@ view model =
     , body =
         [ E.layout
             [ EB.color backgroundColor
-            , E.behindContent <| E.image [ E.alpha 0.2 ] { src = "../assets/noise.jpg", description = "" }
+            , E.behindContent <|
+                E.image
+                    [ E.alpha 0.2
+                    ]
+                    { src = "../assets/noise.jpg", description = "" }
             , E.clip
             ]
           <|
@@ -143,13 +193,13 @@ getTitle : Stage -> String
 getTitle stage =
     case stage of
         TitleStage ->
-            "TicTacToc"
+            "Tic Tac Toc - Title"
 
         GameStage ->
-            "TicTacToc"
+            "Tic Tac Toc - Game"
 
         CreditsStage ->
-            "Credits"
+            "Tic Tac Toc - Credits"
 
 
 getBody : Model -> E.Element Msg
@@ -159,7 +209,7 @@ getBody model =
             titleStageView
 
         GameStage ->
-            gamePageView model.userToken
+            gamePageView model
 
         CreditsStage ->
             creditPageView
@@ -168,7 +218,12 @@ getBody model =
 titleStageView : E.Element Msg
 titleStageView =
     E.column [ E.centerX, E.height E.fill, E.paddingEach { edges | top = 150, bottom = 50 } ]
-        [ E.image [ E.centerX, E.height <| E.px 250, EE.onClick GoToTitle ] { src = "../assets/icon.png", description = "" }
+        [ E.image
+            [ E.centerX
+            , E.height <| E.px 250
+            , EE.onClick GoToTitle
+            ]
+            { src = "../assets/icon.png", description = "" }
         , E.el [ E.alignBottom ] E.none
         , E.image [ E.centerX ] { src = "../assets/title.svg", description = "" }
         , E.row
@@ -196,7 +251,12 @@ titleStageView =
             , E.pointer
             , EF.color fontColor
             , E.mouseOver [ E.alpha 0.5 ]
-            , EF.family [ EF.external { url = "https://fonts.googleapis.com/css?family=Gaegu", name = "gaegu" } ]
+            , EF.family
+                [ EF.external
+                    { url = "https://fonts.googleapis.com/css?family=Gaegu"
+                    , name = "gaegu"
+                    }
+                ]
             , EF.size 25
             ]
           <|
@@ -204,14 +264,108 @@ titleStageView =
         ]
 
 
-gamePageView : Maybe UserToken -> E.Element Msg
-gamePageView userToken =
-    case userToken of
-        Nothing ->
-            E.text "CREDITS"
+hoverTilesAttr : Int -> List (E.Attribute Msg)
+hoverTilesAttr index =
+    [ E.width <| E.px 100
+    , E.height <| E.px 100
+    , E.mouseOver [ E.alpha 0.5 ]
+    , EE.onClick <| LocateToken index User
+    ]
 
-        Just _ ->
-            E.text "CREDITS"
+
+drawToken : Int -> Maybe GameTokens -> E.Element Msg
+drawToken index token =
+    case token of
+        Just Heart ->
+            E.el (hoverTilesAttr index) <| E.image [] { description = "", src = "../assets/heart.png" }
+
+        Just Clip ->
+            E.el (hoverTilesAttr index) <| E.image [] { description = "", src = "../assets/clip.png" }
+
+        Nothing ->
+            E.el (hoverTilesAttr index ++ [ E.mouseOver [ EB.color <| E.rgb 1 0 0 ] ]) E.none
+
+
+getToken : Maybe Players -> GameTokens -> Maybe GameTokens
+getToken tablePlayer userToken =
+    case tablePlayer of
+        Just User ->
+            if userToken == Heart then
+                Just Heart
+
+            else
+                Just Clip
+
+        Just Computer ->
+            if userToken == Heart then
+                Just Clip
+
+            else
+                Just Heart
+
+        _ ->
+            Nothing
+
+
+getTablePlayer : Int -> A.Array (Maybe Players) -> Maybe Players
+getTablePlayer index tableState =
+    let
+        token =
+            A.get index tableState
+    in
+    case token of
+        Just (Just move) ->
+            Just move
+
+        _ ->
+            Nothing
+
+
+tableView : GameState -> E.Element Msg
+tableView gameState =
+    E.column [ E.alpha 0.5 ]
+        [ E.row []
+            [ drawToken 0 <| getToken (getTablePlayer 0 gameState.tableState) gameState.userToken
+            , drawToken 1 <| getToken (getTablePlayer 1 gameState.tableState) gameState.userToken
+            , drawToken 2 <| getToken (getTablePlayer 2 gameState.tableState) gameState.userToken
+            ]
+        , E.row []
+            [ drawToken 3 <| getToken (getTablePlayer 3 gameState.tableState) gameState.userToken
+            , drawToken 4 <| getToken (getTablePlayer 4 gameState.tableState) gameState.userToken
+            , drawToken 5 <| getToken (getTablePlayer 5 gameState.tableState) gameState.userToken
+            ]
+        , E.row []
+            [ drawToken 6 <| getToken (getTablePlayer 6 gameState.tableState) gameState.userToken
+            , drawToken 7 <| getToken (getTablePlayer 7 gameState.tableState) gameState.userToken
+            , drawToken 8 <| getToken (getTablePlayer 8 gameState.tableState) gameState.userToken
+            ]
+        ]
+
+
+gamePageView : Model -> E.Element Msg
+gamePageView model =
+    E.column [ E.centerX ]
+        [ E.image
+            [ E.centerX
+            , E.height <| E.px 250
+            , EE.onClick GoToTitle
+            ]
+            { src = "../assets/icon.png"
+            , description = ""
+            }
+        , E.row []
+            [ E.image [] { src = "../assets/heart.png", description = "" }
+            , E.text "'s turn"
+            ]
+        , E.image
+            [ E.inFront <| tableView model.gameState
+            ]
+            { src = "../assets/board.svg", description = "" }
+        , E.image
+            [ EE.onClick ResetGame
+            ]
+            { src = "../assets/start_over.svg", description = "" }
+        ]
 
 
 creditPageView : E.Element Msg
@@ -220,7 +374,12 @@ creditPageView =
         [ addContributor "Developer" "Luis Papiernik" "luispapiernik.dev"
         , addContributor "Designer" "inJoy Design" "designinjoy.com"
         , E.el [ E.paddingEach { edges | bottom = 0 } ] E.none
-        , E.el [ E.centerX, EE.onClick GoToTitle ] <| E.image [] { src = "../assets/icon_close.svg", description = "" }
+        , E.el
+            [ E.centerX
+            , EE.onClick GoToTitle
+            ]
+          <|
+            E.image [] { src = "../assets/icon_close.svg", description = "" }
         ]
 
 
@@ -230,7 +389,12 @@ addContributor title name url =
         [ E.el
             [ E.centerX
             , EF.size 70
-            , EF.family [ EF.external { url = "https://fonts.googleapis.com/css?family=Gaegu", name = "gaegu" } ]
+            , EF.family
+                [ EF.external
+                    { url = "https://fonts.googleapis.com/css?family=Gaegu"
+                    , name = "gaegu"
+                    }
+                ]
             ]
           <|
             E.text title
@@ -238,7 +402,12 @@ addContributor title name url =
         , E.el
             [ E.centerX
             , EF.size 35
-            , EF.family [ EF.external { url = "https://fonts.googleapis.com/css?family=Gaegu", name = "gaegu" } ]
+            , EF.family
+                [ EF.external
+                    { url = "https://fonts.googleapis.com/css?family=Gaegu"
+                    , name = "gaegu"
+                    }
+                ]
             , E.pointer
             ]
           <|
@@ -248,7 +417,12 @@ addContributor title name url =
             [ E.centerX
             , EF.color fontColor
             , EF.size 20
-            , EF.family [ EF.external { url = "https://fonts.googleapis.com/css?family=Gaegu", name = "gaegu" } ]
+            , EF.family
+                [ EF.external
+                    { url = "https://fonts.googleapis.com/css?family=Gaegu"
+                    , name = "gaegu"
+                    }
+                ]
             , E.pointer
             , E.mouseOver [ E.alpha 0.5 ]
             ]
