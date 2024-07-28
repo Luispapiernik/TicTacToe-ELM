@@ -7,7 +7,6 @@ import Element as E
 import Element.Background as EB
 import Element.Events as EE
 import Element.Font as EF
-import Html exposing (del)
 import Process as P
 import Task as T
 import Url exposing (Url)
@@ -43,6 +42,7 @@ initialGameState =
     { userToken = Heart
     , currentTurn = User
     , tableState = A.repeat 9 Nothing
+    , strategy = dumbPlayer
     }
 
 
@@ -82,10 +82,19 @@ type Stage
     | CreditsStage
 
 
+type alias Table =
+    A.Array (Maybe Players)
+
+
+type alias Strategy =
+    Table -> Int
+
+
 type alias GameState =
     { userToken : GameTokens
     , currentTurn : Players
-    , tableState : A.Array (Maybe Players)
+    , tableState : Table
+    , strategy : Strategy
     }
 
 
@@ -133,7 +142,9 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         GoToGame token ->
-            ( { stage = GameStage, gameState = { initialGameState | userToken = token } }
+            ( { stage = GameStage
+              , gameState = { initialGameState | userToken = token }
+              }
             , Cmd.none
             )
 
@@ -157,7 +168,7 @@ update msg model =
                     processUserTurn index player model
 
                 computerIndex =
-                    getComputerIndex model
+                    dumbPlayer model.gameState.tableState
 
                 command =
                     if player == User then
@@ -173,7 +184,11 @@ update msg model =
                 gameState =
                     model.gameState
             in
-            ( { model | gameState = { gameState | tableState = A.repeat 9 Nothing } }, Cmd.none )
+            ( { model
+                | gameState = { gameState | tableState = A.repeat 9 Nothing }
+              }
+            , Cmd.none
+            )
 
 
 
@@ -205,8 +220,8 @@ processUserTurn index player model =
     { model | gameState = { gameState | tableState = updatedTableState } }
 
 
-getComputerIndex : Model -> Int
-getComputerIndex model =
+dumbPlayer : Table -> Int
+dumbPlayer table =
     0
 
 
@@ -351,7 +366,7 @@ getToken tablePlayer userToken =
             Nothing
 
 
-getTablePlayer : Int -> A.Array (Maybe Players) -> Maybe Players
+getTablePlayer : Int -> Table -> Maybe Players
 getTablePlayer index tableState =
     let
         token =
