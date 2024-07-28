@@ -7,6 +7,9 @@ import Element as E
 import Element.Background as EB
 import Element.Events as EE
 import Element.Font as EF
+import Html exposing (del)
+import Process as P
+import Task as T
 import Url exposing (Url)
 
 
@@ -150,13 +153,20 @@ update msg model =
 
         LocateToken index player ->
             let
-                gameState =
-                    model.gameState
+                newState =
+                    processUserTurn index player model
 
-                updatedTableState =
-                    A.set index (Just player) gameState.tableState
+                computerIndex =
+                    getComputerIndex model
+
+                command =
+                    if player == User then
+                        delay 500 (LocateToken computerIndex Computer)
+
+                    else
+                        Cmd.none
             in
-            ( { model | gameState = { gameState | tableState = updatedTableState } }, Cmd.none )
+            ( newState, command )
 
         ResetGame ->
             let
@@ -164,6 +174,40 @@ update msg model =
                     model.gameState
             in
             ( { model | gameState = { gameState | tableState = A.repeat 9 Nothing } }, Cmd.none )
+
+
+
+-- https://stackoverflow.com/questions/40599512/how-to-achieve-behavior-of-settimeout-in-elm
+
+
+delay : Float -> msg -> Cmd msg
+delay time msg =
+    -- create a task that sleeps for `time`
+    P.sleep time
+        |> -- once the sleep is over, ignore its output (using `always`)
+           -- and then we create a new task that simply returns a success, and the msg
+           T.andThen (always <| T.succeed msg)
+        |> -- finally, we ask Elm to perform the Task, which
+           -- takes the result of the above task and
+           -- returns it to our update function
+           T.perform identity
+
+
+processUserTurn : Int -> Players -> Model -> Model
+processUserTurn index player model =
+    let
+        gameState =
+            model.gameState
+
+        updatedTableState =
+            A.set index (Just player) gameState.tableState
+    in
+    { model | gameState = { gameState | tableState = updatedTableState } }
+
+
+getComputerIndex : Model -> Int
+getComputerIndex model =
+    0
 
 
 
