@@ -6,6 +6,8 @@ repl-temp-*
 # This does not need to be tracked since it is a soft link
 # to the public/assets directory
 assets
+
+# This is generated in the CI/CD stage
 public/elm.js
 
 !public/assets/

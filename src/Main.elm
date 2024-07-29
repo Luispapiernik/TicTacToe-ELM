@@ -8,6 +8,7 @@ import Element.Background as EB
 import Element.Events as EE
 import Element.Font as EF
 import Process as P
+import Random as R
 import Task as T
 import Url exposing (Url)
 
@@ -36,6 +37,12 @@ edges =
     , bottom = 0
     , left = 0
     }
+
+
+strategies : List Strategy
+strategies =
+    [ dumbPlayer
+    ]
 
 
 initialGameState =
@@ -127,6 +134,7 @@ type Msg
     | GoToCredits
     | LocateToken Int Players
     | ResetGame
+    | ChosenStrategy Strategy
 
 
 
@@ -145,7 +153,7 @@ update msg model =
             ( { stage = GameStage
               , gameState = { initialGameState | userToken = token }
               }
-            , Cmd.none
+            , R.generate ChosenStrategy strategyPicker
             )
 
         GoToCredits ->
@@ -168,7 +176,7 @@ update msg model =
                     processUserTurn index player model
 
                 computerIndex =
-                    dumbPlayer model.gameState.tableState
+                    model.gameState.strategy model.gameState.tableState
 
                 command =
                     if player == User then
@@ -187,8 +195,24 @@ update msg model =
             ( { model
                 | gameState = { gameState | tableState = A.repeat 9 Nothing }
               }
+            , R.generate ChosenStrategy strategyPicker
+            )
+
+        ChosenStrategy strategy ->
+            let
+                gameState =
+                    model.gameState
+            in
+            ( { model
+                | gameState = { gameState | strategy = strategy }
+              }
             , Cmd.none
             )
+
+
+strategyPicker : R.Generator Strategy
+strategyPicker =
+    R.uniform dumbPlayer strategies
 
 
 
