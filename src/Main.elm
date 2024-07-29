@@ -54,6 +54,101 @@ initialGameState =
 
 
 
+-- toBinary : String -> Int
+
+
+test coefs exps =
+    case coefs of
+        [] ->
+            0
+
+        x :: xs ->
+            0
+
+
+toInt : String -> Int
+toInt numbers =
+    numbers
+        |> String.filter (\x -> x == '0' || x == '1')
+        |> String.toList
+        |> List.map
+            (\x ->
+                if x == '0' then
+                    0
+
+                else
+                    1
+            )
+        |> List.indexedMap (\index coef -> coef * 2 ^ index)
+        |> List.sum
+
+
+
+-- square
+-- a1 a2 a3
+-- b1 b2 b3
+-- c1 c2 c3
+
+
+possibleMoves : List Int
+possibleMoves =
+    List.map toInt
+        [ -- a1
+          "100 0 000 0 000 0 100 0 000 0 000 0 100 0 000 0"
+        , -- a2
+          "010 0 000 0 000 0 000 0 100 0 000 0 000 0 000 0"
+        , -- a3
+          "001 0 000 0 000 0 000 0 000 0 100 0 000 0 100 0"
+        , -- b1
+          "000 0 100 0 000 0 010 0 000 0 000 0 000 0 000 0"
+        , -- b2
+          "000 0 010 0 000 0 000 0 010 0 000 0 010 0 010 0"
+        , -- b3
+          "000 0 001 0 000 0 000 0 000 0 010 0 000 0 000 0"
+        , -- c1
+          "000 0 000 0 100 0 001 0 000 0 000 0 000 0 001 0"
+        , -- c2
+          "000 0 000 0 010 0 000 0 001 0 000 0 000 0 000 0"
+        , -- c3
+          "000 0 000 0 001 0 000 0 000 0 001 0 001 0 000 0"
+        ]
+
+
+didHePlay : Players -> Maybe Players -> Char
+didHePlay player currentCell =
+    case currentCell of
+        Just he ->
+            if player == he then
+                '1'
+
+            else
+                '0'
+
+        _ ->
+            '0'
+
+
+gameTableToMoveRepresentation : Table -> Players -> Int
+gameTableToMoveRepresentation table player =
+    table
+        |> A.toList
+        -- Here, somehow we need to use the possibleMoves list to calculate
+        -- the move table for the current player
+        |> List.map (didHePlay player)
+        |> String.fromList
+        |> toInt
+
+
+didHeWon : Table -> Players -> Bool
+didHeWon table player =
+    let
+        moveTable =
+            gameTableToMoveRepresentation table player
+    in
+    False
+
+
+
 -- MAIN
 
 
