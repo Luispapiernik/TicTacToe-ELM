@@ -1,6 +1,7 @@
 module Main exposing (main)
 
 import Array as A
+import Bitwise as B
 import Browser
 import Browser.Navigation as Nav
 import Element as E
@@ -9,6 +10,7 @@ import Element.Events as EE
 import Element.Font as EF
 import Process as P
 import Random as R
+import String exposing (right)
 import Task as T
 import Url exposing (Url)
 
@@ -57,13 +59,14 @@ initialGameState =
 -- toBinary : String -> Int
 
 
-test coefs exps =
-    case coefs of
-        [] ->
-            0
+getOtherPlayer : Players -> Players
+getOtherPlayer player =
+    case player of
+        User ->
+            Computer
 
-        x :: xs ->
-            0
+        Computer ->
+            User
 
 
 toInt : String -> Int
@@ -114,18 +117,23 @@ possibleMoves =
         ]
 
 
-didHePlay : Players -> Maybe Players -> Char
+flip : (a -> b -> c) -> b -> a -> c
+flip f a b =
+    f b a
+
+
+didHePlay : Players -> Maybe Players -> Int
 didHePlay player currentCell =
     case currentCell of
         Just he ->
             if player == he then
-                '1'
+                1
 
             else
-                '0'
+                0
 
         _ ->
-            '0'
+            0
 
 
 gameTableToMoveRepresentation : Table -> Players -> Int
@@ -135,8 +143,16 @@ gameTableToMoveRepresentation table player =
         -- Here, somehow we need to use the possibleMoves list to calculate
         -- the move table for the current player
         |> List.map (didHePlay player)
-        |> String.fromList
-        |> toInt
+        |> List.map2
+            (\move flag ->
+                if flag == 1 then
+                    move
+
+                else
+                    0
+            )
+            possibleMoves
+        |> List.foldl B.or 0
 
 
 didHeWon : Table -> Players -> Bool
@@ -144,8 +160,68 @@ didHeWon table player =
     let
         moveTable =
             gameTableToMoveRepresentation table player
+
+        left =
+            B.shiftLeftBy 1 moveTable
+
+        right =
+            B.shiftRightBy 1 moveTable
+
+        flag =
+            B.and moveTable (B.and left right)
     in
-    False
+    flag == 1
+
+
+didHeLose : Table -> Players -> Bool
+didHeLose table player =
+    didHeWon table <| getOtherPlayer player
+
+
+checkTide : Table -> Players -> Bool
+checkTide table player =
+    let
+        noOneWon =
+            not (didHeWon table player) && not (didHeLose table player)
+
+        allPlayed =
+            A.toList >> List.all (\x -> x /= Nothing)
+    in
+    noOneWon && allPlayed table
+
+
+getFinalStateScore : Table -> Players -> Maybe Int
+getFinalStateScore table player =
+    if didHeWon table player then
+        Just 1
+
+    else if didHeLose table player then
+        Just -1
+
+    else if checkTide table player then
+        Just 0
+
+    else
+        Nothing
+
+
+getAllPosibilities : Table -> List Table
+getAllPosibilities table =
+    [ table ]
+
+
+tableCurrentScore : Table -> Players -> List Int
+tableCurrentScore table player =
+    case getFinalStateScore table player of
+        -- This just happens when the table is in one of the final states
+        -- User won, Computer won, or was a Tide
+        Just score ->
+            [ score ]
+
+        _ ->
+            -- When the table is not in one of the final states is necessary to calculate
+            -- the score for all the possible combinations
+            List.filterMap (flip getFinalStateScore <| player) (getAllPosibilities table)
 
 
 
